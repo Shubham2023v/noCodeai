@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Category</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin-right: 200px;
+            padding: 0;
+            display: flex;
+            justify-content: right;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4; /* Warm white */
+            background-image: url('https://img.hotimg.com/website_1.jpeg'); /* AI-related background image */
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        #companyLogo {
+            position: absolute;
+            top: 295px;
+            right: 310px;
+            width: 200px; /* Adjust the width as needed */
+        }
+        #AILogo {
+            position: absolute;
+            top: 85px;
+            right: 310px;
+            width: 200px; /* Adjust the width as needed */
+        }
+        .form-container {
+            background-color: rgba(200, 255, 255, 0.7); /* Semi-transparent white */
+            padding: 10px;
+            border-radius: 5px;
+            width: 30%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            position: relative; /* Add relative positioning */
+            bottom: -120px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            margin-bottom: 10px;
+            color: #333333; /* Purple */
+            display: block
+        }
+        input[type="text"] {
+            margin-bottom: 10px;
+            padding: 2px;
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            display: block;
+        }
+        #issues {
+            margin-bottom: 10px;
+            margin-left: 0px;
+            width: 64%; /* Adjust the width for the first input */
+        }
+        #probability {
+            margin-bottom: 10px;
+            margin-left: 70px;
+            width: 62%; /* Adjust the width for the second input */
+            padding: 5px;
+        }
+        select {
+            margin-bottom: 10px;
+            margin-left: 0px;
+            width: 64%;
+            padding: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #663399; /* Purple */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px; /* Add margin to separate button from inputs */
+        }
+        button:hover {
+            background-color: #5a2d86; /* Darker shade of purple on hover */
+        }
+        progress {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .message {
+            margin-top: 20px;
+            color: #ff3333; /* Red color for error messages */
+        }
+        .hidden {
+            display: none;
+        }
+        .response-container {
+            background-color: rgba(200, 255, 255, 0.7); /* Semi-transparent white */
+            padding: 10px;
+            border-radius: 5px;
+            width: 50%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            position: relative; /* Add relative positioning */
+            top: 120px;
+            left: 130px;
+            text-align: center;
+            overflow-y: auto; /* Add vertical scrollbar */
+            max-height: 300px; /* Limit height to 300px */
+        }
+        .message {
+            margin-top: 20px;
+            color: #ff3333; /* Red color for error messages */
+        }
+        .api-response-item ul {
+            list-style-type: none; /* Remove default bullet points */
+            padding: 0;
+            margin: 0;
+        }
+        /* Style bullet dots */
+        .api-response-item ul li {
+            margin-bottom: 10px;
+            font-size: 16px; /* Adjust bullet size */
+        }
+
+        /* Style bullet dots */
+        .api-response-item ul li::before {
+            content: '•     '; /* Unicode for bullet dot */
+            color: #000000; /* Adjust bullet color */
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <img id="companyLogo" src="https://img.hotimg.com/logo4de3add19ec84b31.png" alt="Company Logo">
+    <img id="AILogo" src="https://img.hotimg.com/WhatsApp-Image-2024-02-26-at-00.33.06.png" alt="AI Logo">
+
+    <!-- Form for input -->
+    <div class="form-container" id="inputForm">
+        <form id="submitForm">
+            <div>
+                <label for="issues">Issues:</label>
+                <textarea id="issues" name="issues" rows="4"></textarea>
+            </div>
+            <div>
+                <label for="probability">Probability:</label>
+                <input type="text" id="probability" name="probability">
+            </div>
+            <div>
+                <label for="modelSelect">Select Model:</label>
+                <select id="modelSelect"></select>
+            </div>
+            <button type="button" onclick="submitData()">Submit</button>
+            <progress id="progressBar" value="0" max="100" class="hidden"></progress>
+            <!-- Message box for success or error -->
+            <div id="messageBox" class="message hidden"></div>
+        </form>
+    </div>
+
+    <!-- Form for API response -->
+    <div class="response-container hidden" id="responseForm">
+        <div id="apiResponse"></div>
+        <button id="downloadBtn" class="hidden" onclick="downloadCsv()">Download CSV</button>
+    </div>
+
+</body>
+<script>
+    // Function to populate the dropdown list with model names
+    function populateModelList() {
+        fetch('http://127.0.0.1:5105/api/v1/get_model', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 200) {
+                var select = document.getElementById('modelSelect');
+                data.model_name.forEach(function(model) {
+                    var option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    select.appendChild(option);
+                });
+            } else {
+                showMessage('Failed to fetch model names.', true);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred while fetching model names.', true);
+        });
+    }
+
+    // Call the function to populate the dropdown list on page load
+    populateModelList();
+
+    function showMessage(message, isError = false) {
+        var messageBox = document.getElementById('messageBox');
+        messageBox.textContent = message;
+        messageBox.classList.toggle('hidden', false);
+        messageBox.classList.toggle('success', !isError);
+        messageBox.classList.toggle('error', isError);
+    }
+
+    function submitData() {
+        // Hide previous messages
+        showMessage('', false);
+
+        // Hide the input form
+        var inputForm = document.getElementById('inputForm');
+        inputForm.classList.toggle('hidden', true);
+
+        // Display progress bar
+        var progressBar = document.getElementById('progressBar');
+        progressBar.classList.toggle('hidden', false);
+
+        // Get values from inputs
+        var issues = document.getElementById('issues').value;
+        var probability = document.getElementById('probability').value;
+        var selectedModel = document.getElementById('modelSelect').value;
+
+        // Make sure all values are provided
+        if (!issues || !probability || !selectedModel) {
+            showMessage("Please provide Issues, Probability, and select a Model.", true);
+            inputForm.classList.toggle('hidden', false);
+            progressBar.classList.toggle('hidden', true);
+            return;
+        }
+
+        // Prepare data to send
+        var data = {
+            "issues": issues.split('\n').map(issue => issue.trim()),
+            "probability": probability,
+            "selectedModel": selectedModel
+        };
+
+        // Call the REST API endpoint
+        fetch('http://127.0.0.1:5103/api/v1/get_category', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Success:', data);
+            // Display API response
+            displayApiResponse(data);
+            // Show the response form
+            var responseForm = document.getElementById('responseForm');
+            responseForm.classList.toggle('hidden', false);
+            // Hide progress bar
+            progressBar.classList.toggle('hidden', true);
+            // Show the download button
+            var downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.classList.remove('hidden');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred while submitting data.', true);
+            // Show the input form
+            inputForm.classList.toggle('hidden', false);
+            // Hide progress bar
+            progressBar.classList.toggle('hidden', true);
+        });
+    }
+
+    function displayApiResponse(data) {
+        var apiResponse = document.getElementById('apiResponse');
+        apiResponse.innerHTML = ''; // Clear previous response
+        apiResponse.classList.remove('hidden'); // Make sure the response container is visible
+
+        // Loop through each issue
+        data.best_mapped.forEach(function(mapping, index) {
+            var responseText = `<div class="api-response-item">`;
+            responseText += `<p>Issue ${index + 1}:</p>`;
+            responseText += `<ul>`;
+            // Add best mapped category
+            responseText += `<li>${mapping}</li>`;
+            responseText += `</ul>`;
+            responseText += `<p>Other Mappings:</p>`;
+            responseText += `<ul>`;
+            // Check if there are other mappings for this issue
+            if (data.other_mapping_above_given_threshold[index] && data.other_mapping_above_given_threshold[index].length > 0) {
+                data.other_mapping_above_given_threshold[index].forEach(function(mapping) {
+                    // Add other mapped category
+                    responseText += `<li>Category: ${mapping.category}, Probability: ${mapping.probability}</li>`;
+                });
+            }
+            responseText += `</ul>`;
+            responseText += `</div>`;
+            apiResponse.innerHTML += responseText;
+        });
+
+        showMessage('Best Classification Done!');
+    }
+
+    function downloadCsv() {
+        console.log("Downloading CSV...");
+
+        // Get the API response data as HTML content
+        var apiResponseContainer = document.getElementById('apiResponse');
+        var apiResponseItems = apiResponseContainer.querySelectorAll('.api-response-item');
+
+        // Initialize CSV content with headers
+        var csvContent = "Issue, Best Category\n";
+
+        // Loop through each API response item
+        apiResponseItems.forEach(function(apiResponseItem, index) {
+            // Extract the issue number and best category
+            var issueElement = apiResponseItem.querySelector('p');
+            var issueNumber = issueElement.textContent.trim().replace('Issue ', '');
+            var bestCategoryElement = apiResponseItem.querySelector('li');
+            var bestCategory = bestCategoryElement.textContent.trim();
+
+            // Extract other mappings
+            var otherMappings = Array.from(apiResponseItem.querySelectorAll('li')).slice(1); // Exclude the best category
+            var formattedMappings = otherMappings.map(function(mappingElement) {
+                var category = mappingElement.textContent.trim().split(',')[0].replace('Category: ', '');
+                var probability = mappingElement.textContent.trim().split(',')[1].replace('Probability: ', '');
+                return `Category: ${category}\nProbability: ${probability}`;
+            });
+
+            // Add the issue, best category, and other mappings to CSV content
+            csvContent += `"${issueNumber}", "${bestCategory}"\n`;
+        });
+
+        // Create a Blob containing the CSV data
+        var blob = new Blob([csvContent], { type: 'text/csv' });
+
+        // Create a temporary URL for the Blob
+        var url = window.URL.createObjectURL(blob);
+
+        try {
+            // Create an anchor element
+            var a = document.createElement('a');
+
+            // Set the anchor's attributes
+            a.href = url;
+            a.download = 'best_mapped_output.csv';
+
+            // Append the anchor to the body
+            document.body.appendChild(a);
+
+            // Click the anchor to trigger the download
+            a.click();
+
+            // Remove the anchor from the body
+            document.body.removeChild(a);
+
+            console.log("CSV download initiated.");
+        } catch (error) {
+            console.error("Error downloading CSV:", error);
+        }
+    }
+</script>
+</html>
